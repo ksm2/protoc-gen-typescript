@@ -3,6 +3,12 @@ pub struct Module {
     pub declarations: Vec<Declaration>,
 }
 
+impl Module {
+    pub fn new(declarations: Vec<Declaration>) -> Self {
+        Self { declarations }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Declaration {
     Import(ImportDeclaration),
