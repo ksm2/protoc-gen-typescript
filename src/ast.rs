@@ -11,7 +11,31 @@ impl Module {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Declaration {
+    Export(ExportDeclaration),
     Import(ImportDeclaration),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportDeclaration {
+    pub specifiers: Vec<ExportSpecifier>,
+    pub source: Literal,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExportSpecifier {
+    Named(ExportNamedSpecifier),
+    Namespace(ExportNamespaceSpecifier),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportNamedSpecifier {
+    pub local: Identifier,
+    pub imported: Identifier,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportNamespaceSpecifier {
+    pub local: Identifier,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

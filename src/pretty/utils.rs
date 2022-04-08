@@ -1,5 +1,16 @@
 use pretty::{Pretty, RcAllocator, RcDoc};
 
+pub fn export_decl<'a>(doc1: RcDoc<'a>, doc2: RcDoc<'a>) -> RcDoc<'a> {
+    RcDoc::text("export")
+        .append(space())
+        .append(doc1)
+        .append(space())
+        .append(RcDoc::text("from"))
+        .append(space())
+        .append(doc2)
+        .append(semi())
+}
+
 pub fn import_decl<'a>(doc1: RcDoc<'a>, doc2: RcDoc<'a>) -> RcDoc<'a> {
     RcDoc::text("import")
         .append(space())

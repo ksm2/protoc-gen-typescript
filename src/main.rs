@@ -2,7 +2,6 @@ use std::error::Error;
 use std::io;
 
 use protobuf::plugin::{CodeGeneratorRequest, CodeGeneratorResponse, CodeGeneratorResponse_File};
-use protobuf::rustproto::exts::lite_runtime_all;
 use protobuf::Message;
 
 use crate::pretty::Prettify;
@@ -24,14 +23,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         messages
             .iter()
             .map(|descr| descr.get_name())
-            .map(|name| ast::ImportDeclaration {
+            .map(|name| ast::ExportDeclaration {
                 source: ast::Literal::String(format!("./{}.js", name)),
-                specifiers: vec![ast::ImportSpecifier::Named(ast::ImportNamedSpecifier {
+                specifiers: vec![ast::ExportSpecifier::Named(ast::ExportNamedSpecifier {
                     local: id(name),
                     imported: id(name),
                 })],
             })
-            .map(ast::Declaration::Import)
+            .map(ast::Declaration::Export)
             .collect(),
     );
 

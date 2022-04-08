@@ -30,7 +30,63 @@ impl Prettify for Declaration {
     fn to_doc(&self) -> RcDoc {
         match self {
             Declaration::Import(ref id) => id.to_doc(),
+            Declaration::Export(ref id) => id.to_doc(),
         }
+    }
+}
+
+impl Prettify for ExportDeclaration {
+    fn to_doc(&self) -> RcDoc {
+        let namespace_import = self
+            .specifiers
+            .iter()
+            .filter(|s| matches!(s, ExportSpecifier::Namespace(_)))
+            .map(|s| s.to_doc())
+            .next();
+
+        if let Some(doc) = namespace_import {
+            return export_decl(doc, self.source.to_doc());
+        }
+
+        let named_imports = self
+            .specifiers
+            .iter()
+            .filter(|s| matches!(s, ExportSpecifier::Named(_)))
+            .map(|s| s.to_doc())
+            .collect::<Vec<_>>();
+
+        let named_imports = if named_imports.is_empty() {
+            RcDoc::nil()
+        } else {
+            braces(comma_separated(named_imports))
+        };
+
+        export_decl(named_imports, self.source.to_doc())
+    }
+}
+
+impl Prettify for ExportSpecifier {
+    fn to_doc(&self) -> RcDoc {
+        match self {
+            ExportSpecifier::Named(ref sp) => sp.to_doc(),
+            ExportSpecifier::Namespace(ref sp) => sp.to_doc(),
+        }
+    }
+}
+
+impl Prettify for ExportNamedSpecifier {
+    fn to_doc(&self) -> RcDoc {
+        if self.local == self.imported {
+            self.local.to_doc()
+        } else {
+            as_stmt(self.imported.to_doc(), self.local.to_doc())
+        }
+    }
+}
+
+impl Prettify for ExportNamespaceSpecifier {
+    fn to_doc(&self) -> RcDoc {
+        as_stmt(asterisk(), self.local.to_doc())
     }
 }
 
