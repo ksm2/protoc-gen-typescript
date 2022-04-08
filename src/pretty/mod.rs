@@ -1,5 +1,10 @@
+use pretty::RcDoc;
+
 use crate::ast::*;
-use pretty::{Pretty, RcAllocator, RcDoc};
+
+use self::utils::*;
+
+mod utils;
 
 pub trait Prettify {
     fn to_doc(&self) -> RcDoc;
@@ -39,14 +44,7 @@ impl Prettify for ImportDeclaration {
             .next();
 
         if let Some(doc) = namespace_import {
-            return RcDoc::text("import")
-                .append(space())
-                .append(doc)
-                .append(space())
-                .append(RcDoc::text("from"))
-                .append(space())
-                .append(self.source.to_doc())
-                .append(semi());
+            return import_decl(doc, self.source.to_doc());
         }
 
         let default_import = self
@@ -55,7 +53,7 @@ impl Prettify for ImportDeclaration {
             .filter(|s| matches!(s, ImportSpecifier::Default(_)))
             .map(|s| s.to_doc().append(comma()).append(space()))
             .next()
-            .unwrap_or(RcDoc::nil());
+            .unwrap_or_else(RcDoc::nil);
 
         let named_imports = self
             .specifiers
@@ -70,15 +68,7 @@ impl Prettify for ImportDeclaration {
             braces(comma_separated(named_imports))
         };
 
-        RcDoc::text("import")
-            .append(space())
-            .append(default_import)
-            .append(named_imports)
-            .append(space())
-            .append(RcDoc::text("from"))
-            .append(space())
-            .append(self.source.to_doc())
-            .append(semi())
+        import_decl(default_import.append(named_imports), self.source.to_doc())
     }
 }
 
@@ -97,12 +87,7 @@ impl Prettify for ImportNamedSpecifier {
         if self.local == self.imported {
             self.local.to_doc()
         } else {
-            self.imported
-                .to_doc()
-                .append(space())
-                .append(RcDoc::text("as"))
-                .append(space())
-                .append(self.local.to_doc())
+            as_stmt(self.imported.to_doc(), self.local.to_doc())
         }
     }
 }
@@ -115,11 +100,7 @@ impl Prettify for ImportDefaultSpecifier {
 
 impl Prettify for ImportNamespaceSpecifier {
     fn to_doc(&self) -> RcDoc {
-        asterisk()
-            .append(space())
-            .append(RcDoc::text("as"))
-            .append(space())
-            .append(self.local.to_doc())
+        as_stmt(asterisk(), self.local.to_doc())
     }
 }
 
@@ -137,48 +118,4 @@ impl Prettify for Identifier {
     fn to_doc(&self) -> RcDoc {
         RcDoc::text(&self.0)
     }
-}
-
-fn escape_str(str: &str) -> String {
-    str.replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\t', "\\t")
-        .replace('\r', "\\r")
-}
-
-fn space<'a>() -> RcDoc<'a> {
-    RcDoc::text(" ")
-}
-
-fn asterisk<'a>() -> RcDoc<'a> {
-    RcDoc::text("*")
-}
-
-fn comma_separated<'a, I>(docs: I) -> RcDoc<'a>
-where
-    I: IntoIterator,
-    I::Item: Pretty<'a, RcAllocator>,
-{
-    RcDoc::intersperse(docs, comma().append(RcDoc::space()))
-}
-
-fn comma<'a>() -> RcDoc<'a> {
-    RcDoc::text(",")
-}
-
-fn semi<'a>() -> RcDoc<'a> {
-    RcDoc::text(";")
-}
-
-fn quote<'a>() -> RcDoc<'a> {
-    RcDoc::text("\"")
-}
-
-fn braces(doc: RcDoc) -> RcDoc {
-    RcDoc::group(
-        RcDoc::text("{")
-            .append(RcDoc::line().append(doc).nest(2))
-            .append(RcDoc::line())
-            .append(RcDoc::text("}")),
-    )
 }
