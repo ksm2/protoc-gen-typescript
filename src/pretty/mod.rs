@@ -37,40 +37,34 @@ impl Prettify for Declaration {
 
 impl Prettify for ExportDeclaration {
     fn to_doc(&self) -> RcDoc {
-        let namespace_import = self
-            .specifiers
-            .iter()
-            .filter(|s| matches!(s, ExportSpecifier::Namespace(_)))
-            .map(|s| s.to_doc())
-            .next();
-
-        if let Some(doc) = namespace_import {
-            return export_decl(doc, self.source.to_doc());
-        }
-
-        let named_imports = self
-            .specifiers
-            .iter()
-            .filter(|s| matches!(s, ExportSpecifier::Named(_)))
-            .map(|s| s.to_doc())
-            .collect::<Vec<_>>();
-
-        let named_imports = if named_imports.is_empty() {
-            RcDoc::nil()
-        } else {
-            braces(comma_separated(named_imports))
-        };
-
-        export_decl(named_imports, self.source.to_doc())
+        RcDoc::text("export").append(space()).append(match self {
+            ExportDeclaration::From(ref clause) => clause.to_doc(),
+            ExportDeclaration::Named(ref named) => named.to_doc(),
+        })
     }
 }
 
-impl Prettify for ExportSpecifier {
+impl Prettify for FromClause {
+    fn to_doc(&self) -> RcDoc {
+        self.export
+            .to_doc()
+            .append(space())
+            .append(from_clause(self.source.to_doc()))
+    }
+}
+
+impl Prettify for ExportFromClause {
     fn to_doc(&self) -> RcDoc {
         match self {
-            ExportSpecifier::Named(ref sp) => sp.to_doc(),
-            ExportSpecifier::Namespace(ref sp) => sp.to_doc(),
+            ExportFromClause::Namespace(ref ns) => ns.to_doc(),
+            ExportFromClause::Named(ref named) => named.to_doc(),
         }
+    }
+}
+
+impl Prettify for NamedExports {
+    fn to_doc(&self) -> RcDoc {
+        braces(comma_separated_(self.exports.iter().map(|e| e.to_doc())))
     }
 }
 
@@ -86,7 +80,11 @@ impl Prettify for ExportNamedSpecifier {
 
 impl Prettify for ExportNamespaceSpecifier {
     fn to_doc(&self) -> RcDoc {
-        as_stmt(asterisk(), self.local.to_doc())
+        if let Some(local) = &self.local {
+            as_stmt(asterisk(), local.to_doc())
+        } else {
+            asterisk()
+        }
     }
 }
 
@@ -103,13 +101,14 @@ impl Prettify for ImportDeclaration {
             return import_decl(doc, self.source.to_doc());
         }
 
-        let default_import = self
+        let mut default_import = self
             .specifiers
             .iter()
             .filter(|s| matches!(s, ImportSpecifier::Default(_)))
-            .map(|s| s.to_doc().append(comma()).append(space()))
+            .map(|s| s.to_doc())
             .next()
-            .unwrap_or_else(RcDoc::nil);
+            .into_iter()
+            .collect::<Vec<_>>();
 
         let named_imports = self
             .specifiers
@@ -118,13 +117,16 @@ impl Prettify for ImportDeclaration {
             .map(|s| s.to_doc())
             .collect::<Vec<_>>();
 
-        let named_imports = if named_imports.is_empty() {
-            RcDoc::nil()
+        let mut named_imports = if named_imports.is_empty() {
+            Vec::new()
         } else {
-            braces(comma_separated(named_imports))
+            vec![braces(comma_separated(named_imports))]
         };
 
-        import_decl(default_import.append(named_imports), self.source.to_doc())
+        default_import.append(&mut named_imports);
+        let imports = comma_separated(default_import);
+
+        import_decl(imports, self.source.to_doc())
     }
 }
 
@@ -173,5 +175,87 @@ impl Prettify for Literal {
 impl Prettify for Identifier {
     fn to_doc(&self) -> RcDoc {
         RcDoc::text(&self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Prettify;
+
+    macro_rules! assert_pretty {
+        ($expected: expr, $actual: expr) => {
+            assert_eq!($expected, $actual.to_pretty(80));
+        };
+    }
+
+    #[test]
+    fn named_imports() {
+        assert_pretty!(
+            "import { foo as bar, baz } from \"./default\";",
+            ImportDeclaration::new(
+                vec![
+                    ImportSpecifier::Named(ImportNamedSpecifier {
+                        imported: Identifier("foo".to_string()),
+                        local: Identifier("bar".to_string()),
+                    }),
+                    ImportSpecifier::Named(ImportNamedSpecifier {
+                        imported: Identifier("baz".to_string()),
+                        local: Identifier("baz".to_string()),
+                    })
+                ],
+                Literal::String("./default".to_string()),
+            )
+        );
+    }
+
+    #[test]
+    fn default_import() {
+        assert_pretty!(
+            "import default from \"./default\";",
+            ImportDeclaration::new(
+                vec![ImportSpecifier::Default(ImportDefaultSpecifier {
+                    local: Identifier("default".to_string())
+                })],
+                Literal::String("./default".to_string()),
+            )
+        );
+    }
+
+    #[test]
+    fn default_and_named_import() {
+        assert_pretty!(
+            "import default, { foo as bar } from \"./default\";",
+            ImportDeclaration::new(
+                vec![
+                    ImportSpecifier::Default(ImportDefaultSpecifier {
+                        local: Identifier("default".to_string())
+                    }),
+                    ImportSpecifier::Named(ImportNamedSpecifier {
+                        imported: Identifier("foo".to_string()),
+                        local: Identifier("bar".to_string()),
+                    })
+                ],
+                Literal::String("./default".to_string()),
+            )
+        );
+    }
+
+    #[test]
+    fn ns_import() {
+        assert_pretty!(
+            "import * as ns from \"./ns\";",
+            ImportDeclaration::new(
+                vec![ImportSpecifier::Namespace(ImportNamespaceSpecifier {
+                    local: Identifier("ns".to_string())
+                })],
+                Literal::String("./ns".to_string()),
+            )
+        );
+    }
+
+    #[test]
+    fn string_literal() {
+        assert_pretty!("\"./ns\"", Literal::String("./ns".to_string()));
     }
 }

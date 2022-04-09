@@ -23,12 +23,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         messages
             .iter()
             .map(|descr| descr.get_name())
-            .map(|name| ast::ExportDeclaration {
-                source: ast::Literal::String(format!("./{}.js", name)),
-                specifiers: vec![ast::ExportSpecifier::Named(ast::ExportNamedSpecifier {
-                    local: id(name),
-                    imported: id(name),
-                })],
+            .map(|name| {
+                ast::ExportDeclaration::From(ast::FromClause {
+                    source: ast::Literal::String(format!("./{}.js", name)),
+                    export: ast::ExportFromClause::Named(ast::NamedExports {
+                        exports: vec![ast::ExportNamedSpecifier::new(id(name))],
+                    }),
+                })
             })
             .map(ast::Declaration::Export)
             .collect(),

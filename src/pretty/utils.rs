@@ -1,24 +1,17 @@
 use pretty::{Pretty, RcAllocator, RcDoc};
 
-pub fn export_decl<'a>(doc1: RcDoc<'a>, doc2: RcDoc<'a>) -> RcDoc<'a> {
-    RcDoc::text("export")
-        .append(space())
-        .append(doc1)
-        .append(space())
-        .append(RcDoc::text("from"))
-        .append(space())
-        .append(doc2)
-        .append(semi())
-}
-
 pub fn import_decl<'a>(doc1: RcDoc<'a>, doc2: RcDoc<'a>) -> RcDoc<'a> {
     RcDoc::text("import")
         .append(space())
         .append(doc1)
         .append(space())
-        .append(RcDoc::text("from"))
+        .append(from_clause(doc2))
+}
+
+pub fn from_clause(doc: RcDoc) -> RcDoc {
+    RcDoc::text("from")
         .append(space())
-        .append(doc2)
+        .append(doc)
         .append(semi())
 }
 
@@ -44,12 +37,24 @@ pub fn asterisk<'a>() -> RcDoc<'a> {
     RcDoc::text("*")
 }
 
+pub fn comma_separated_<'a, I>(docs: I) -> RcDoc<'a>
+where
+    I: IntoIterator,
+    I::Item: Pretty<'a, RcAllocator>,
+{
+    comma_separated(docs).append(trailing_comma())
+}
+
 pub fn comma_separated<'a, I>(docs: I) -> RcDoc<'a>
 where
     I: IntoIterator,
     I::Item: Pretty<'a, RcAllocator>,
 {
     RcDoc::intersperse(docs, comma().append(RcDoc::space()))
+}
+
+fn trailing_comma<'a>() -> RcDoc<'a> {
+    comma().flat_alt(RcDoc::nil())
 }
 
 pub fn comma<'a>() -> RcDoc<'a> {

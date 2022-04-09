@@ -16,15 +16,26 @@ pub enum Declaration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExportDeclaration {
-    pub specifiers: Vec<ExportSpecifier>,
+pub enum ExportDeclaration {
+    From(FromClause),
+    Named(NamedExports),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FromClause {
+    pub export: ExportFromClause,
     pub source: Literal,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ExportSpecifier {
-    Named(ExportNamedSpecifier),
+pub enum ExportFromClause {
     Namespace(ExportNamespaceSpecifier),
+    Named(NamedExports),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NamedExports {
+    pub exports: Vec<ExportNamedSpecifier>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,15 +44,31 @@ pub struct ExportNamedSpecifier {
     pub imported: Identifier,
 }
 
+impl ExportNamedSpecifier {
+    pub fn new(local: Identifier) -> Self {
+        Self::with_alias(local.clone(), local)
+    }
+
+    pub fn with_alias(local: Identifier, imported: Identifier) -> Self {
+        Self { local, imported }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExportNamespaceSpecifier {
-    pub local: Identifier,
+    pub local: Option<Identifier>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportDeclaration {
     pub specifiers: Vec<ImportSpecifier>,
     pub source: Literal,
+}
+
+impl ImportDeclaration {
+    pub fn new(specifiers: Vec<ImportSpecifier>, source: Literal) -> Self {
+        Self { specifiers, source }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
