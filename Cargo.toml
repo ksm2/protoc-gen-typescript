@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 protobuf = "2.27.1"
 swc = { git = "https://github.com/swc-project/swc" }
+num-bigint = "0.4.3"
