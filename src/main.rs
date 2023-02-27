@@ -1,5 +1,5 @@
 use num_bigint::BigInt;
-use protobuf::descriptor::{FieldDescriptorProto, FieldDescriptorProto_Type};
+use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto, FieldDescriptorProto_Type};
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use swc::common::SourceMap;
 use swc::common::Span;
 use swc::config::SourceMapsConfig;
 use swc::ecmascript::ast;
-use swc::ecmascript::ast::EsVersion;
+use swc::ecmascript::ast::{BinExpr, ClassMember, EmptyStmt, EsVersion, IfStmt, MemberExpr, ThisExpr};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cm = Arc::new(SourceMap::default());
@@ -91,12 +91,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                             type_params: None,
                             super_type_params: None,
                             implements: vec![],
-                            body: message
-                                .field
-                                .iter()
-                                .map(field_prop)
-                                .map(ast::ClassMember::PrivateProp)
-                                .collect(),
+                            body: [
+                                message
+                                    .field
+                                    .iter()
+                                    .map(field_prop)
+                                    .map(ast::ClassMember::PrivateProp)
+                                    .collect(),
+                                vec![serialize_method(message)],
+                            ]
+                            .concat(),
                         },
                     }),
                 })),
@@ -104,19 +108,55 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
         response
             .file
-            .push(file(&c, format!("{}.ts", name), &module))
+            .push(file(&c, format!("{name}.ts"), &module))
     }
     response.write_to_writer(&mut io::stdout())?;
     Ok(())
 }
 
+fn serialize_method(message: &DescriptorProto) -> ClassMember {
+    ClassMember::Method(ast::ClassMethod {
+        span: Span::default(),
+        key: ast::PropName::Ident(id("serialize")),
+        kind: ast::MethodKind::Method,
+        is_static: false,
+        accessibility: None,
+        is_abstract: false,
+        is_optional: false,
+        is_override: false,
+        function: ast::Function {
+            params: vec![ast::Param {
+                span: Default::default(),
+                decorators: vec![],
+                pat: ast::Pat::Ident(ast::BindingIdent {
+                    id: id("writer"),
+                    type_ann: Some(to_type_ann(ident_type(id(
+                        "BinaryWriter",
+                    )))),
+                }),
+            }],
+            decorators: vec![],
+            span: Default::default(),
+            body: Some(ast::BlockStmt {
+                span: Default::default(),
+                stmts: message
+                    .field
+                    .iter()
+                    .map(serialize_field)
+                    .collect(),
+            }),
+            is_generator: false,
+            is_async: false,
+            type_params: None,
+            return_type: Some(to_type_ann(void_type())),
+        },
+    })
+}
+
 fn field_prop(field: &FieldDescriptorProto) -> ast::PrivateProp {
     ast::PrivateProp {
         span: Span::default(),
-        key: ast::PrivateName {
-            span: Span::default(),
-            id: id(field.get_name()),
-        },
+        key: private_name(field.get_name()),
         value: Some(Box::new(default_expr(field))),
         type_ann: Some(type_to_ts_ann(&field.get_field_type())),
         is_static: false,
@@ -127,6 +167,32 @@ fn field_prop(field: &FieldDescriptorProto) -> ast::PrivateProp {
         readonly: false,
         definite: false,
     }
+}
+
+fn serialize_field(field: &FieldDescriptorProto) -> ast::Stmt {
+    let cond = ast::Expr::Bin(BinExpr {
+        span: Span::default(),
+        op: ast::BinaryOp::NotEqEq,
+        left: Box::new(ast::Expr::Member(MemberExpr {
+            span: Span::default(),
+            obj: Box::new(ast::Expr::This(ThisExpr {
+                span: Span::default(),
+            })),
+            prop: ast::MemberProp::PrivateName(private_name(field.get_name())),
+        })),
+        right: Box::new(default_expr(field)),
+    });
+
+    let then = ast::Stmt::Empty(EmptyStmt { span: Span::default() });
+
+    let if_stmt = IfStmt {
+        span: Span::default(),
+        alt: None,
+        test: Box::new(cond),
+        cons: Box::new(then),
+    };
+
+    ast::Stmt::If(if_stmt)
 }
 
 fn default_expr(field: &FieldDescriptorProto) -> ast::Expr {
@@ -181,9 +247,13 @@ fn undefined() -> ast::Expr {
 }
 
 fn type_to_ts_ann(field_type: &FieldDescriptorProto_Type) -> ast::TsTypeAnn {
+    to_type_ann(type_to_ts(field_type))
+}
+
+fn to_type_ann(ts_type: ast::TsType) -> ast::TsTypeAnn {
     ast::TsTypeAnn {
         span: Span::default(),
-        type_ann: Box::new(type_to_ts(field_type)),
+        type_ann: Box::new(ts_type),
     }
 }
 
@@ -212,6 +282,10 @@ fn any_type() -> ast::TsType {
     keyword_type(ast::TsKeywordTypeKind::TsAnyKeyword)
 }
 
+fn void_type() -> ast::TsType {
+    keyword_type(ast::TsKeywordTypeKind::TsVoidKeyword)
+}
+
 fn boolean_type() -> ast::TsType {
     keyword_type(ast::TsKeywordTypeKind::TsBooleanKeyword)
 }
@@ -236,9 +310,13 @@ fn keyword_type(kind: ast::TsKeywordTypeKind) -> ast::TsType {
 }
 
 fn uint8_array_type() -> ast::TsType {
+    ident_type(id("Uint8Array"))
+}
+
+fn ident_type(ident: ast::Ident) -> ast::TsType {
     ast::TsType::TsTypeRef(ast::TsTypeRef {
         span: Span::default(),
-        type_name: ast::TsEntityName::Ident(id("Uint8Array")),
+        type_name: ast::TsEntityName::Ident(ident),
         type_params: None,
     })
 }
@@ -267,6 +345,10 @@ fn file(
     file.set_name(filename.into());
     file.set_content(ast_printed.code);
     file
+}
+
+fn private_name(str: &'_ str) -> ast::PrivateName {
+    ast::PrivateName { span: Span::default(), id: id(str) }
 }
 
 fn id(str: &'_ str) -> ast::Ident {
