@@ -31,3 +31,20 @@ jobs:
 
     - name: Run tests
       run: cargo test --verbose
+
+    - name: Install
+      run: echo target/debug >> $GITHUB_PATH
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+
+    - name: Generate code
+      run: |
+        mkdir out
+        protoc -Iexample --typescript_out=out example/test.proto
+
+    - name: Upload generated code
+      uses: actions/upload-artifact@v3
+      with:
+        name: generated-code
+        path: out
