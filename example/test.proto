@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+enum Status {
+  ZERO = 0;
+  ONE = 1;
+  TWO = 2;
+}
+
+message Nested {}
+
+message Foo {
+  string test_string = 1;
+  bytes test_bytes = 2;
+  bool test_bool = 3;
+  int32 test_int32 = 4;
+  int64 test_int64 = 5;
+  uint32 test_uint32 = 6;
+  uint64 test_uint64 = 7;
+  sint32 test_sint32 = 8;
+  sint64 test_sint64 = 9;
+  fixed32 test_fixed32 = 10;
+  fixed64 test_fixed64 = 11;
+  float test_float = 12;
+  double test_double = 13;
+  Status test_enum = 14;
+  Nested test_nested = 15;
+}
