@@ -1,6 +1,7 @@
 use crate::utils::*;
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto, FieldDescriptorProto_Type};
 use protobuf::plugin::CodeGeneratorResponse_File;
+use swc::common::util::take::Take;
 use swc::common::Span;
 use swc::ecmascript::ast::*;
 use swc::Compiler;
@@ -16,27 +17,20 @@ pub fn message(c: &Compiler, message: &DescriptorProto) -> CodeGeneratorResponse
         .collect();
 
     let module = module([
-        ModuleDecl::Import(named_import(
-            "google-protobuf",
-            &["BinaryReader", "BinaryWriter"],
-        )),
-        ModuleDecl::ExportDecl(ExportDecl {
+        named_import("google-protobuf", &["BinaryReader", "BinaryWriter"]).into(),
+        ExportDecl {
             span: Span::default(),
-            decl: Decl::Class(ClassDecl {
+            decl: ClassDecl {
                 ident: id(name),
                 declare: false,
                 class: Class {
-                    span: Span::default(),
-                    decorators: vec![],
-                    super_class: None,
-                    is_abstract: false,
-                    type_params: None,
-                    super_type_params: None,
-                    implements: vec![],
-                    body: [properties, vec![serialize_method(message)]].concat(),
+                    body: [properties, vec![serialize_method(message).into()]].concat(),
+                    ..Take::dummy()
                 },
-            }),
-        }),
+            }
+            .into(),
+        }
+        .into(),
     ]);
 
     super::file(c, format!("{name}.ts"), &module)
@@ -44,10 +38,7 @@ pub fn message(c: &Compiler, message: &DescriptorProto) -> CodeGeneratorResponse
 
 fn named_import(src: &str, specifiers: &[&str]) -> ImportDecl {
     ImportDecl {
-        span: Span::default(),
         src: src.into(),
-        type_only: false,
-        asserts: None,
         specifiers: specifiers
             .iter()
             .map(|spec| ImportNamedSpecifier {
@@ -58,11 +49,12 @@ fn named_import(src: &str, specifiers: &[&str]) -> ImportDecl {
             })
             .map(ImportSpecifier::Named)
             .collect(),
+        ..Take::dummy()
     }
 }
 
-fn serialize_method(message: &DescriptorProto) -> ClassMember {
-    ClassMember::Method(ClassMethod {
+fn serialize_method(message: &DescriptorProto) -> ClassMethod {
+    ClassMethod {
         span: Span::default(),
         key: PropName::Ident(id("serialize")),
         kind: MethodKind::Method,
@@ -80,18 +72,14 @@ fn serialize_method(message: &DescriptorProto) -> ClassMember {
                     type_ann: Some(to_type_ann(ident_type("BinaryWriter"))),
                 }),
             }],
-            decorators: vec![],
-            span: Default::default(),
             body: Some(BlockStmt {
                 span: Default::default(),
                 stmts: message.field.iter().map(serialize_field).collect(),
             }),
-            is_generator: false,
-            is_async: false,
-            type_params: None,
             return_type: Some(to_type_ann(void_type())),
+            ..Take::dummy()
         },
-    })
+    }
 }
 
 fn field_prop(field: &FieldDescriptorProto) -> PrivateProp {
@@ -124,9 +112,7 @@ fn serialize_field(field: &FieldDescriptorProto) -> Stmt {
         right: Box::new(default_expr(field)),
     });
 
-    let then = Stmt::Empty(EmptyStmt {
-        span: Span::default(),
-    });
+    let then = Stmt::Block(BlockStmt::dummy());
 
     let if_stmt = IfStmt {
         span: Span::default(),
