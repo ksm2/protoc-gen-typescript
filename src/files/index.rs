@@ -1,15 +1,15 @@
 use crate::utils::*;
 use protobuf::descriptor::DescriptorProto;
-use protobuf::plugin::CodeGeneratorResponse_File;
+use protobuf::plugin::code_generator_response::File;
 use swc::common::Span;
 use swc::ecmascript::ast::*;
 use swc::Compiler;
 
-pub fn index(c: &Compiler, messages: &[&DescriptorProto]) -> CodeGeneratorResponse_File {
+pub fn index(c: &Compiler, messages: &[&DescriptorProto]) -> File {
     let module = module(
         messages
             .iter()
-            .map(|descr| descr.get_name())
+            .map(|descr| descr.name())
             .map(to_named_export)
             .map(ModuleDecl::ExportNamed),
     );
