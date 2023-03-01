@@ -54,7 +54,40 @@ pub fn message(message: &DescriptorProto) -> File {
 
     class.blank();
 
-    let deserialize = class.method("deserialize", &[("reader", "BinaryReader")], "void");
+    let mut deserialize = class.method("deserialize", &[("reader", "BinaryReader")], "void");
+    let mut while_ = deserialize.while_("reader.nextField()");
+    let mut switch = while_.switch("reader.getFieldNumber()");
+    for field in &message.field {
+        let mut case = switch.case(&field.number().to_string());
+        let field_name = field.name();
+        let field_type = field.type_();
+        let method = method_suffix(&field_type);
+
+        match field_type {
+            Type::TYPE_MESSAGE => {
+                let type_name = get_message_name(field);
+                case.call(&format!("this.{field_name} = reader.readMessage(new {type_name}(), (message: {type_name}) => message.deserialize(reader))();"));
+            }
+
+            Type::TYPE_INT64
+            | Type::TYPE_UINT64
+            | Type::TYPE_SFIXED64
+            | Type::TYPE_SINT64
+            | Type::TYPE_FIXED64 => {
+                case.call(&format!(
+                    "this.{field_name} = BigInt(reader.read{method}String());"
+                ));
+            }
+
+            _ => {
+                case.call(&format!("this.{field_name} = reader.read{method}();"));
+            }
+        }
+
+        case.end();
+    }
+    switch.end();
+    while_.end();
     deserialize.end();
 
     class.end();
@@ -66,26 +99,7 @@ fn serialize_field(field: &FieldDescriptorProto, then: &mut impl Block) {
     let number = field.number();
     let field_name = field.name();
 
-    let method = match field.type_() {
-        Type::TYPE_BOOL => "writeBool",
-        Type::TYPE_BYTES => "writeBytes",
-        Type::TYPE_DOUBLE => "writeDouble",
-        Type::TYPE_ENUM => "writeEnum",
-        Type::TYPE_FIXED32 => "writeFixed32",
-        Type::TYPE_FIXED64 => "writeFixed64",
-        Type::TYPE_FLOAT => "writeFloat",
-        Type::TYPE_GROUP => unreachable!(),
-        Type::TYPE_INT32 => "writeInt32",
-        Type::TYPE_INT64 => "writeInt64",
-        Type::TYPE_MESSAGE => "writeMessage",
-        Type::TYPE_SFIXED32 => "writeSfixed32",
-        Type::TYPE_SFIXED64 => "writeSfixed64",
-        Type::TYPE_SINT32 => "writeSint32",
-        Type::TYPE_SINT64 => "writeSint64",
-        Type::TYPE_STRING => "writeString",
-        Type::TYPE_UINT32 => "writeUint32",
-        Type::TYPE_UINT64 => "writeUint64",
-    };
+    let method = method_suffix(&field.type_());
 
     match field.type_() {
         Type::TYPE_MESSAGE => {
@@ -101,13 +115,38 @@ fn serialize_field(field: &FieldDescriptorProto, then: &mut impl Block) {
         | Type::TYPE_SINT64
         | Type::TYPE_FIXED64 => {
             then.call(&format!(
-                "writer.{method}String({number}, this.{field_name}.toString(10));"
+                "writer.write{method}String({number}, this.{field_name}.toString(10));"
             ));
         }
 
         _ => {
-            then.call(&format!("writer.{method}({number}, this.{field_name});"));
+            then.call(&format!(
+                "writer.write{method}({number}, this.{field_name});"
+            ));
         }
+    }
+}
+
+fn method_suffix(field_type: &Type) -> &'static str {
+    match field_type {
+        Type::TYPE_BOOL => "Bool",
+        Type::TYPE_BYTES => "Bytes",
+        Type::TYPE_DOUBLE => "Double",
+        Type::TYPE_ENUM => "Enum",
+        Type::TYPE_FIXED32 => "Fixed32",
+        Type::TYPE_FIXED64 => "Fixed64",
+        Type::TYPE_FLOAT => "Float",
+        Type::TYPE_GROUP => unreachable!(),
+        Type::TYPE_INT32 => "Int32",
+        Type::TYPE_INT64 => "Int64",
+        Type::TYPE_MESSAGE => "Message",
+        Type::TYPE_SFIXED32 => "Sfixed32",
+        Type::TYPE_SFIXED64 => "Sfixed64",
+        Type::TYPE_SINT32 => "Sint32",
+        Type::TYPE_SINT64 => "Sint64",
+        Type::TYPE_STRING => "String",
+        Type::TYPE_UINT32 => "Uint32",
+        Type::TYPE_UINT64 => "Uint64",
     }
 }
 

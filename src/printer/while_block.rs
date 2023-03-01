@@ -1,14 +1,14 @@
 use super::Block;
 use super::Module;
 
-pub struct IfBlock<'a> {
+pub struct WhileBlock<'a> {
     module: &'a mut Module,
 }
 
-impl<'a> IfBlock<'a> {
+impl<'a> WhileBlock<'a> {
     pub(super) fn new(module: &'a mut Module, cond: &str) -> Self {
         module.print_indentation();
-        module.println(&format!("if ({cond}) {{"));
+        module.println(&format!("while ({cond}) {{"));
         module.indent();
         Self { module }
     }
@@ -20,7 +20,7 @@ impl<'a> IfBlock<'a> {
     }
 }
 
-impl<'a> Block for IfBlock<'a> {
+impl<'a> Block for WhileBlock<'a> {
     fn module(&mut self) -> &mut Module {
         self.module
     }
