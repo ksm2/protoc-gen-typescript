@@ -2,7 +2,7 @@ use crate::printer::{Block, Module, SwitchBlock};
 use protobuf::descriptor::field_descriptor_proto::Type;
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto};
 use protobuf::plugin::code_generator_response::File;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 pub fn message(message: &DescriptorProto) -> File {
     let name = message.name();
@@ -17,7 +17,7 @@ pub fn message(message: &DescriptorProto) -> File {
         .iter()
         .filter(|field| field.type_() == Type::TYPE_MESSAGE || field.type_() == Type::TYPE_ENUM)
         .map(get_message_name)
-        .collect::<HashSet<_>>();
+        .collect::<BTreeSet<_>>();
     for imported_message in imported_messages {
         module
             .import(&[imported_message])
