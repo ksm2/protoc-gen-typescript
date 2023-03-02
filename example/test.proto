@@ -27,3 +27,36 @@ message Foo {
   Status test_enum = 14;
   Nested test_nested = 15;
 }
+
+message RepeatedMessage {
+ repeated string test_string = 1;
+ repeated string test_unpacked_string = 1001 [packed = false];
+ repeated bytes test_bytes = 2;
+ repeated bytes test_unpacked_bytes = 1002 [packed = false];
+ repeated bool test_bool = 3;
+ repeated bool test_unpacked_bool = 1003 [packed = false];
+ repeated int32 test_int32 = 4;
+ repeated int32 test_unpacked_int32 = 1004 [packed = false];
+ repeated int64 test_int64 = 5;
+ repeated int64 test_unpacked_int64 = 1005 [packed = false];
+ repeated uint32 test_uint32 = 6;
+ repeated uint32 test_unpacked_uint32 = 1006 [packed = false];
+ repeated uint64 test_uint64 = 7;
+ repeated uint64 test_unpacked_uint64 = 1007 [packed = false];
+ repeated sint32 test_sint32 = 8;
+ repeated sint32 test_unpacked_sint32 = 1008 [packed = false];
+ repeated sint64 test_sint64 = 9;
+ repeated sint64 test_unpacked_sint64 = 1009 [packed = false];
+ repeated fixed32 test_fixed32 = 10;
+ repeated fixed32 test_unpacked_fixed32 = 1010 [packed = false];
+ repeated fixed64 test_fixed64 = 11;
+ repeated fixed64 test_unpacked_fixed64 = 1011 [packed = false];
+ repeated float test_float = 12;
+ repeated float test_unpacked_float = 1012 [packed = false];
+ repeated double test_double = 13;
+ repeated double test_unpacked_double = 1013 [packed = false];
+ repeated Status test_enum = 14;
+ repeated Status test_unpacked_enum = 1014 [packed = false];
+ repeated Nested test_nested = 15;
+ repeated Nested test_unpacked_nested = 1015 [packed = false];
+}

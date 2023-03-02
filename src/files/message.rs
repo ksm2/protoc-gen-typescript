@@ -1,5 +1,5 @@
 use crate::printer::{Block, Module, SwitchBlock};
-use protobuf::descriptor::field_descriptor_proto::Type;
+use protobuf::descriptor::field_descriptor_proto::{Label, Type};
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto};
 use protobuf::plugin::code_generator_response::File;
 use std::collections::BTreeSet;
@@ -30,7 +30,12 @@ pub fn message(message: &DescriptorProto) -> File {
     for field in &message.field {
         let field_type = field.type_();
         let property = class.property(field.json_name());
-        if field_type == Type::TYPE_MESSAGE {
+        if field.label() == Label::LABEL_REPEATED {
+            property
+                .typed(&(type_to_ts(field).to_string() + "[]"))
+                .assign("[]")
+                .end();
+        } else if field_type == Type::TYPE_MESSAGE {
             property.optional().typed(type_to_ts(field)).end();
         } else {
             property
@@ -67,8 +72,10 @@ pub fn message(message: &DescriptorProto) -> File {
 
 fn serialize_field(field: &FieldDescriptorProto, block: &mut impl Block) {
     let field_name = field.json_name();
-    let mut then = match field.type_() {
-        Type::TYPE_STRING | Type::TYPE_BYTES => block.if_(&format!("this.{field_name}.length > 0")),
+    let mut then = match (field.type_(), field.label()) {
+        (Type::TYPE_STRING, _) | (Type::TYPE_BYTES, _) | (_, Label::LABEL_REPEATED) => {
+            block.if_(&format!("this.{field_name}.length > 0"))
+        }
         _ => {
             let field_default = default_expr(&field.type_());
             block.if_(&format!("this.{field_name} !== {field_default}"))
@@ -83,12 +90,17 @@ fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
     let field_name = field.json_name();
 
     let method = method_suffix(&field.type_());
+    let repeated = if field.label() == Label::LABEL_REPEATED {
+        "Repeated"
+    } else {
+        ""
+    };
 
     match field.type_() {
         Type::TYPE_MESSAGE => {
             let type_name = get_message_name(field);
             block.call(&format!(
-                "writer.writeMessage({number}, this.{field_name}, (message: {type_name}) => message.serialize(writer));"
+                "writer.write{repeated}Message({number}, this.{field_name} as any, (message: {type_name}) => message.serialize(writer));"
             ));
         }
 
@@ -97,14 +109,20 @@ fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
         | Type::TYPE_SFIXED64
         | Type::TYPE_SINT64
         | Type::TYPE_FIXED64 => {
-            block.call(&format!(
-                "writer.write{method}String({number}, this.{field_name}.toString(10));"
-            ));
+            if field.label() == Label::LABEL_REPEATED {
+                block.call(&format!(
+                    "writer.writeRepeated{method}String({number}, this.{field_name}.map((each) => each.toString(10)));"
+                ));
+            } else {
+                block.call(&format!(
+                    "writer.write{method}String({number}, this.{field_name}.toString(10));"
+                ));
+            }
         }
 
         _ => {
             block.call(&format!(
-                "writer.write{method}({number}, this.{field_name});"
+                "writer.write{repeated}{method}({number}, this.{field_name});"
             ));
         }
     }
@@ -115,12 +133,22 @@ fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
     let field_name = field.json_name();
     let field_type = field.type_();
     let method = method_suffix(&field_type);
+    let repeated = field.label() == Label::LABEL_REPEATED;
 
     match field_type {
         Type::TYPE_MESSAGE => {
-            let type_name = get_message_name(field);
-            case.call(&format!("this.{field_name} = new {type_name}();"));
-            case.call(&format!("reader.readMessage(this.{field_name}, (message: {type_name}) => message.deserialize(reader));"));
+            if repeated {
+                let type_name = get_message_name(field);
+                case.call(&format!("const message = new {type_name}();"));
+                case.call(&format!(
+                    "reader.readMessage(message, (msg: {type_name}) => msg.deserialize(reader));"
+                ));
+                case.call(&format!("this.{field_name}.push(message);"));
+            } else {
+                let type_name = get_message_name(field);
+                case.call(&format!("this.{field_name} = new {type_name}();"));
+                case.call(&format!("reader.readMessage(this.{field_name}, (message: {type_name}) => message.deserialize(reader));"));
+            }
         }
 
         Type::TYPE_INT64
@@ -128,17 +156,44 @@ fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
         | Type::TYPE_SFIXED64
         | Type::TYPE_SINT64
         | Type::TYPE_FIXED64 => {
-            case.call(&format!(
-                "this.{field_name} = BigInt(reader.read{method}String());"
-            ));
+            if repeated {
+                let packed = field.options.packed.unwrap_or(true);
+                if packed {
+                    case.call(&format!(
+                        "this.{field_name} = reader.readPacked{method}String().map(BigInt);"
+                    ));
+                } else {
+                    case.call(&format!(
+                        "this.{field_name}.push(BigInt(reader.read{method}String()));"
+                    ));
+                }
+            } else {
+                case.call(&format!(
+                    "this.{field_name} = BigInt(reader.read{method}String());"
+                ));
+            }
         }
 
         _ => {
-            case.call(&format!("this.{field_name} = reader.read{method}();"));
+            let packed = repeated && field.options.packed.unwrap_or(is_packable(&field_type));
+            if packed {
+                case.call(&format!("this.{field_name} = reader.readPacked{method}();"));
+            } else if repeated {
+                case.call(&format!("this.{field_name}.push(reader.read{method}());"));
+            } else {
+                case.call(&format!("this.{field_name} = reader.read{method}();"));
+            }
         }
     }
 
     case.end();
+}
+
+fn is_packable(field_type: &Type) -> bool {
+    !matches!(
+        field_type,
+        Type::TYPE_STRING | Type::TYPE_BYTES | Type::TYPE_MESSAGE
+    )
 }
 
 fn method_suffix(field_type: &Type) -> &'static str {
