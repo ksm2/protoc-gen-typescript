@@ -15,7 +15,7 @@ pub fn message(message: &DescriptorProto) -> File {
     let imported_messages = message
         .field
         .iter()
-        .filter(|field| field.type_() == Type::TYPE_MESSAGE)
+        .filter(|field| field.type_() == Type::TYPE_MESSAGE || field.type_() == Type::TYPE_ENUM)
         .map(get_message_name)
         .collect::<HashSet<_>>();
     for imported_message in imported_messages {
@@ -181,7 +181,7 @@ fn type_to_ts(field: &FieldDescriptorProto) -> &str {
         | Type::TYPE_FIXED64
         | Type::TYPE_SFIXED64
         | Type::TYPE_SINT64 => "bigint",
-        Type::TYPE_MESSAGE => get_message_name(field),
+        Type::TYPE_MESSAGE | Type::TYPE_ENUM => get_message_name(field),
         _ => "any",
     }
 }

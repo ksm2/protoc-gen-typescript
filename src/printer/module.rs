@@ -1,4 +1,5 @@
 use super::class::Class;
+use super::enum_::Enum;
 use super::export::Export;
 use super::import::Import;
 use protobuf::plugin::code_generator_response::File;
@@ -33,6 +34,10 @@ impl Module {
 
     pub fn class(&mut self, name: impl Into<String>) -> Class {
         Class::new(self, name)
+    }
+
+    pub fn enum_(&mut self, name: impl Into<String>) -> Enum {
+        Enum::new(self, name)
     }
 
     pub(super) fn println(&mut self, str: &str) {
