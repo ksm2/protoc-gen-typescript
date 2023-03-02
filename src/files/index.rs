@@ -7,7 +7,7 @@ pub fn index(messages: &[&DescriptorProto]) -> File {
 
     for message in messages {
         let name = message.name();
-        module.export(&[name]).from(&format!("./{name}.js"));
+        module.export(&[name]).from(&format!("./{name}"));
     }
 
     module.into()
