@@ -6,7 +6,9 @@ enum Status {
   TWO = 2;
 }
 
-message Nested {}
+message Nested {
+  string nested_str = 42;
+}
 
 message Foo {
   string test_string = 1;

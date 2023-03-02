@@ -4,6 +4,10 @@
 ### Rust ###
 /target
 
+### Node.js ###
+/coverage
+/node_modules
+
 ### IDEA ###
 /.idea
 *.iml
