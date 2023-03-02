@@ -119,7 +119,8 @@ fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
     match field_type {
         Type::TYPE_MESSAGE => {
             let type_name = get_message_name(field);
-            case.call(&format!("this.{field_name} = reader.readMessage(new {type_name}(), (message: {type_name}) => message.deserialize(reader));"));
+            case.call(&format!("this.{field_name} = new {type_name}();"));
+            case.call(&format!("reader.readMessage(this.{field_name}, (message: {type_name}) => message.deserialize(reader));"));
         }
 
         Type::TYPE_INT64
