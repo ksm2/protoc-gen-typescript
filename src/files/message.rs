@@ -44,11 +44,7 @@ pub fn message(message: &DescriptorProto) -> File {
 
     let mut serialize = class.method("serialize", &[("writer", "BinaryWriter")], "void");
     for field in &message.field {
-        let field_name = field.name();
-        let field_default = default_expr(&field.type_());
-        let mut then = serialize.if_(&format!("this.{field_name} !== {field_default}"));
-        serialize_field(field, &mut then);
-        then.end();
+        serialize_field(field, &mut serialize);
     }
     serialize.end();
 
@@ -95,7 +91,20 @@ pub fn message(message: &DescriptorProto) -> File {
     module.into()
 }
 
-fn serialize_field(field: &FieldDescriptorProto, then: &mut impl Block) {
+fn serialize_field(field: &FieldDescriptorProto, block: &mut impl Block) {
+    let field_name = field.name();
+    let mut then = match field.type_() {
+        Type::TYPE_STRING | Type::TYPE_BYTES => block.if_(&format!("this.{field_name}.length > 0")),
+        _ => {
+            let field_default = default_expr(&field.type_());
+            block.if_(&format!("this.{field_name} !== {field_default}"))
+        }
+    };
+    serialize_field_value(field, &mut then);
+    then.end();
+}
+
+fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
     let number = field.number();
     let field_name = field.name();
 
@@ -104,7 +113,7 @@ fn serialize_field(field: &FieldDescriptorProto, then: &mut impl Block) {
     match field.type_() {
         Type::TYPE_MESSAGE => {
             let type_name = get_message_name(field);
-            then.call(&format!(
+            block.call(&format!(
                 "writer.writeMessage({number}, this.{field_name}, (message: {type_name}) => message.serialize(writer));"
             ));
         }
@@ -114,13 +123,13 @@ fn serialize_field(field: &FieldDescriptorProto, then: &mut impl Block) {
         | Type::TYPE_SFIXED64
         | Type::TYPE_SINT64
         | Type::TYPE_FIXED64 => {
-            then.call(&format!(
+            block.call(&format!(
                 "writer.write{method}String({number}, this.{field_name}.toString(10));"
             ));
         }
 
         _ => {
-            then.call(&format!(
+            block.call(&format!(
                 "writer.write{method}({number}, this.{field_name});"
             ));
         }
