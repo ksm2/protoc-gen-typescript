@@ -1,6 +1,9 @@
-# Rust
+### Protoc ###
+/gen
+
+### Rust ###
 /target
 
-# IDEA
+### IDEA ###
 /.idea
 *.iml

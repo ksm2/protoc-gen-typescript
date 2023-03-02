@@ -1,9 +1,9 @@
 @ECHO OFF
 
-del /F out\*.ts
+del /F gen\*.ts
 
 protoc ^
   --proto_path=example ^
   --plugin=protoc-gen-typescript=target\debug\protoc-gen-typescript.exe ^
-  --typescript_out=out ^
+  --typescript_out=gen ^
   example\test.proto
