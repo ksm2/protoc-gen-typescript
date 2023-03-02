@@ -1,4 +1,4 @@
-use crate::printer::{Block, Module};
+use crate::printer::{Block, Module, SwitchBlock};
 use protobuf::descriptor::field_descriptor_proto::Type;
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto};
 use protobuf::plugin::code_generator_response::File;
@@ -29,7 +29,7 @@ pub fn message(message: &DescriptorProto) -> File {
     let mut class = module.class(name);
     for field in &message.field {
         let field_type = field.type_();
-        let property = class.property(field.name());
+        let property = class.property(field.json_name());
         if field_type == Type::TYPE_MESSAGE {
             property.optional().typed(type_to_ts(field)).end();
         } else {
@@ -54,33 +54,7 @@ pub fn message(message: &DescriptorProto) -> File {
     let mut while_ = deserialize.while_("reader.nextField()");
     let mut switch = while_.switch("reader.getFieldNumber()");
     for field in &message.field {
-        let mut case = switch.case(&field.number().to_string());
-        let field_name = field.name();
-        let field_type = field.type_();
-        let method = method_suffix(&field_type);
-
-        match field_type {
-            Type::TYPE_MESSAGE => {
-                let type_name = get_message_name(field);
-                case.call(&format!("this.{field_name} = reader.readMessage(new {type_name}(), (message: {type_name}) => message.deserialize(reader))();"));
-            }
-
-            Type::TYPE_INT64
-            | Type::TYPE_UINT64
-            | Type::TYPE_SFIXED64
-            | Type::TYPE_SINT64
-            | Type::TYPE_FIXED64 => {
-                case.call(&format!(
-                    "this.{field_name} = BigInt(reader.read{method}String());"
-                ));
-            }
-
-            _ => {
-                case.call(&format!("this.{field_name} = reader.read{method}();"));
-            }
-        }
-
-        case.end();
+        deserialize_field(field, &mut switch);
     }
     switch.end();
     while_.end();
@@ -92,7 +66,7 @@ pub fn message(message: &DescriptorProto) -> File {
 }
 
 fn serialize_field(field: &FieldDescriptorProto, block: &mut impl Block) {
-    let field_name = field.name();
+    let field_name = field.json_name();
     let mut then = match field.type_() {
         Type::TYPE_STRING | Type::TYPE_BYTES => block.if_(&format!("this.{field_name}.length > 0")),
         _ => {
@@ -106,7 +80,7 @@ fn serialize_field(field: &FieldDescriptorProto, block: &mut impl Block) {
 
 fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
     let number = field.number();
-    let field_name = field.name();
+    let field_name = field.json_name();
 
     let method = method_suffix(&field.type_());
 
@@ -134,6 +108,36 @@ fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
             ));
         }
     }
+}
+
+fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
+    let mut case = switch.case(&field.number().to_string());
+    let field_name = field.json_name();
+    let field_type = field.type_();
+    let method = method_suffix(&field_type);
+
+    match field_type {
+        Type::TYPE_MESSAGE => {
+            let type_name = get_message_name(field);
+            case.call(&format!("this.{field_name} = reader.readMessage(new {type_name}(), (message: {type_name}) => message.deserialize(reader))();"));
+        }
+
+        Type::TYPE_INT64
+        | Type::TYPE_UINT64
+        | Type::TYPE_SFIXED64
+        | Type::TYPE_SINT64
+        | Type::TYPE_FIXED64 => {
+            case.call(&format!(
+                "this.{field_name} = BigInt(reader.read{method}String());"
+            ));
+        }
+
+        _ => {
+            case.call(&format!("this.{field_name} = reader.read{method}();"));
+        }
+    }
+
+    case.end();
 }
 
 fn method_suffix(field_type: &Type) -> &'static str {
