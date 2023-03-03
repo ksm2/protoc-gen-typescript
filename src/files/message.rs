@@ -66,6 +66,32 @@ pub fn message(message: &DescriptorProto) -> File {
         to_date.call("return new Date(fromSeconds + fromNanos);");
         to_date.end();
         class.blank();
+    } else if message.name() == "Duration" && message.field.len() == 2 {
+        let mut between = class.method(
+            "static between",
+            &[("date1", "Date"), ("date2", "Date")],
+            "Duration",
+        );
+        between.call("const millis = Math.abs(date1.getTime() - date2.getTime());");
+        between.call("return Duration.fromMillis(millis);");
+        between.end();
+        class.blank();
+
+        let mut from_millis =
+            class.method("static fromMillis", &[("millis", "number")], "Duration");
+        from_millis.call("const dur = new Duration();");
+        from_millis.call("dur.seconds = BigInt(Math.floor(millis / 1000));");
+        from_millis.call("dur.nanos = (millis % 1000) * 1_000_000;");
+        from_millis.call("return dur;");
+        from_millis.end();
+        class.blank();
+
+        let mut to_millis = class.method("toMillis", &[], "number");
+        to_millis.call("const fromSeconds = Number(this.seconds * 1000n);");
+        to_millis.call("const fromNanos = Math.floor(this.nanos / 1_000_000);");
+        to_millis.call("return fromSeconds + fromNanos;");
+        to_millis.end();
+        class.blank();
     }
 
     let mut serialize = class.method("serialize", &[("writer", "BinaryWriter")], "void");

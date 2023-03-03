@@ -2,10 +2,7 @@ import childProcess from 'node:child_process';
 import { jsonToProtoText, protoTextToJSON } from './proto-text';
 
 export async function decode(typeName: string, binary: Uint8Array): Promise<unknown> {
-  const buf = await exec(
-    `protoc --decode=${typeName} -Iinclude include/test.proto include/timestamp.proto`,
-    binary
-  );
+  const buf = await protoc(`--decode=${typeName}`, binary);
   const str = buf.toString();
   return protoTextToJSON(str);
 }
@@ -13,9 +10,13 @@ export async function decode(typeName: string, binary: Uint8Array): Promise<unkn
 export async function encode(typeName: string, obj: unknown): Promise<Buffer> {
   const str = jsonToProtoText(obj);
   const buf = Buffer.from(str);
+  return protoc(`--encode=${typeName}`, buf);
+}
+
+function protoc(command: string, stdin: Uint8Array): Promise<Buffer> {
   return exec(
-    `protoc --encode=${typeName} -Iinclude include/test.proto include/timestamp.proto`,
-    buf
+    `protoc ${command} -Iinclude include/test.proto include/duration.proto include/timestamp.proto`,
+    stdin
   );
 }
 

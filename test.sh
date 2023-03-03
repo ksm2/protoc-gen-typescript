@@ -6,4 +6,5 @@ protoc \
   --proto_path=include \
   --typescript_out=gen \
   include/test.proto \
+  include/duration.proto \
   include/timestamp.proto
