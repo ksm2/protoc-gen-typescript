@@ -3,7 +3,7 @@
 del /F gen\*.ts
 
 protoc ^
-  --proto_path=example ^
+  --proto_path=include ^
   --plugin=protoc-gen-typescript=target\debug\protoc-gen-typescript.exe ^
   --typescript_out=gen ^
-  example\test.proto
+  include\test.proto

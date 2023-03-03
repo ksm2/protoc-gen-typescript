@@ -3,6 +3,6 @@ PATH=$PATH:$PWD/target/debug
 mkdir -p gen
 rm -f gen/*.tf
 protoc \
-  --proto_path=example \
+  --proto_path=include \
   --typescript_out=gen \
-  example/test.proto
+  include/*.proto

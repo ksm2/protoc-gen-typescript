@@ -41,7 +41,7 @@ jobs:
     - name: Generate code
       run: |
         mkdir gen
-        protoc -Iexample --typescript_out=gen example/test.proto
+        protoc -Iinclude --typescript_out=gen include/test.proto
 
     - name: Setup Node
       uses: actions/setup-node@v3
