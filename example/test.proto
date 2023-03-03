@@ -28,6 +28,20 @@ message Foo {
   Nested test_nested = 15;
 }
 
+message NumberTypedInts {
+  int64 test_int64 = 1 [jstype = JS_NUMBER];
+  uint64 test_uint64 = 2 [jstype = JS_NUMBER];
+  sint64 test_sint64 = 3 [jstype = JS_NUMBER];
+  fixed64 test_fixed64 = 4 [jstype = JS_NUMBER];
+}
+
+message StringTypedInts {
+  int64 test_int64 = 1 [jstype = JS_STRING];
+  uint64 test_uint64 = 2 [jstype = JS_STRING];
+  sint64 test_sint64 = 3 [jstype = JS_STRING];
+  fixed64 test_fixed64 = 4 [jstype = JS_STRING];
+}
+
 message RepeatedMessage {
  repeated string test_string = 1;
  repeated string test_unpacked_string = 1001 [packed = false];

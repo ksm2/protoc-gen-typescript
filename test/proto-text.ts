@@ -8,11 +8,17 @@ function protoTextToJSONLines(lines: string[]): unknown {
   let line: string | undefined;
   while ((line = lines.shift()) !== undefined) {
     if (line.includes(':')) {
-      let [prop, val] = line.split(': ');
+      let [prop, val] = line.split(': ') as [prop: string, val: any];
       if (val.match(/^[A-Z_]+$/)) {
         val = `"${val}"`;
       }
-      add(output, prop.trimStart(), JSON.parse(val));
+      if (val.match(/^-?[0-9]{16,}$/)) {
+        val = BigInt(val);
+      } else {
+        val = JSON.parse(val);
+      }
+
+      add(output, prop.trimStart(), val);
     } else if (line.endsWith('{')) {
       const prop = line.slice(0, -2);
       add(output, prop, protoTextToJSONLines(lines));
@@ -44,7 +50,7 @@ function jsonToProtoTextIndent(obj: unknown, indent: number): string {
     const value = Array.isArray(val) ? val : [val];
     for (const val of value) {
       if (typeof val !== 'object') {
-        output += `${indentation}${key}: ${JSON.stringify(val)}\n`;
+        output += `${indentation}${key}: ${encode(val)}\n`;
       } else {
         const nested = jsonToProtoTextIndent(val, indent + 2);
         output += `${indentation}${key} {\n${nested}${indentation}}\n`;
@@ -52,4 +58,11 @@ function jsonToProtoTextIndent(obj: unknown, indent: number): string {
     }
   }
   return output;
+}
+
+function encode(val: unknown): string {
+  if (typeof val === 'bigint') {
+    return val.toString(10);
+  }
+  return JSON.stringify(val);
 }

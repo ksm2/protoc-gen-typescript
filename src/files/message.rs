@@ -1,5 +1,6 @@
 use crate::printer::{Block, Module, SwitchBlock};
 use protobuf::descriptor::field_descriptor_proto::{Label, Type};
+use protobuf::descriptor::field_options::JSType;
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto};
 use protobuf::plugin::code_generator_response::File;
 use std::collections::BTreeSet;
@@ -40,7 +41,7 @@ pub fn message(message: &DescriptorProto) -> File {
         } else {
             property
                 .typed(type_to_ts(field))
-                .assign(default_expr(&field_type))
+                .assign(default_expr(field))
                 .end();
         }
     }
@@ -77,7 +78,7 @@ fn serialize_field(field: &FieldDescriptorProto, block: &mut impl Block) {
             block.if_(&format!("this.{field_name}.length > 0"))
         }
         _ => {
-            let field_default = default_expr(&field.type_());
+            let field_default = default_expr(field);
             block.if_(&format!("this.{field_name} !== {field_default}"))
         }
     };
@@ -89,7 +90,6 @@ fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
     let number = field.number();
     let field_name = field.json_name();
 
-    let method = method_suffix(&field.type_());
     let repeated = if field.label() == Label::LABEL_REPEATED {
         "Repeated"
     } else {
@@ -109,18 +109,11 @@ fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
         | Type::TYPE_SFIXED64
         | Type::TYPE_SINT64
         | Type::TYPE_FIXED64 => {
-            if field.label() == Label::LABEL_REPEATED {
-                block.call(&format!(
-                    "writer.writeRepeated{method}String({number}, this.{field_name}.map((each) => each.toString(10)));"
-                ));
-            } else {
-                block.call(&format!(
-                    "writer.write{method}String({number}, this.{field_name}.toString(10));"
-                ));
-            }
+            serialize_int64(field, block);
         }
 
         _ => {
+            let method = method_suffix(&field.type_());
             block.call(&format!(
                 "writer.write{repeated}{method}({number}, this.{field_name});"
             ));
@@ -128,15 +121,46 @@ fn serialize_field_value(field: &FieldDescriptorProto, block: &mut impl Block) {
     }
 }
 
+fn serialize_int64(field: &FieldDescriptorProto, block: &mut impl Block) {
+    let number = field.number();
+    let field_name = field.json_name();
+    let js_type = field.options.jstype();
+    let method = method_suffix(&field.type_());
+
+    let is_repeated = field.label() == Label::LABEL_REPEATED;
+    if is_repeated {
+        block.call(&format!(
+            "writer.writeRepeated{method}String({number}, this.{field_name}.map((each) => each.toString(10)));"
+        ));
+    } else {
+        match js_type {
+            JSType::JS_NUMBER => {
+                block.call(&format!(
+                    "writer.write{method}({number}, this.{field_name});"
+                ));
+            }
+            JSType::JS_STRING => {
+                block.call(&format!(
+                    "writer.write{method}String({number}, this.{field_name});"
+                ));
+            }
+            JSType::JS_NORMAL => {
+                block.call(&format!(
+                    "writer.write{method}String({number}, this.{field_name}.toString(10));"
+                ));
+            }
+        }
+    }
+}
+
 fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
-    let mut case = switch.case(&field.number().to_string());
     let field_name = field.json_name();
     let field_type = field.type_();
-    let method = method_suffix(&field_type);
     let repeated = field.label() == Label::LABEL_REPEATED;
 
     match field_type {
         Type::TYPE_MESSAGE => {
+            let mut case = switch.case(&field.number().to_string());
             if repeated {
                 let type_name = get_message_name(field);
                 case.call(&format!("const message = new {type_name}();"));
@@ -149,32 +173,18 @@ fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
                 case.call(&format!("this.{field_name} = new {type_name}();"));
                 case.call(&format!("reader.readMessage(this.{field_name}, (message: {type_name}) => message.deserialize(reader));"));
             }
+            case.end();
         }
 
         Type::TYPE_INT64
         | Type::TYPE_UINT64
         | Type::TYPE_SFIXED64
         | Type::TYPE_SINT64
-        | Type::TYPE_FIXED64 => {
-            if repeated {
-                let packed = field.options.packed.unwrap_or(true);
-                if packed {
-                    case.call(&format!(
-                        "this.{field_name} = reader.readPacked{method}String().map(BigInt);"
-                    ));
-                } else {
-                    case.call(&format!(
-                        "this.{field_name}.push(BigInt(reader.read{method}String()));"
-                    ));
-                }
-            } else {
-                case.call(&format!(
-                    "this.{field_name} = BigInt(reader.read{method}String());"
-                ));
-            }
-        }
+        | Type::TYPE_FIXED64 => deserialize_int64(field, switch),
 
         _ => {
+            let mut case = switch.case(&field.number().to_string());
+            let method = method_suffix(&field_type);
             let packed = repeated && field.options.packed.unwrap_or(is_packable(&field_type));
             if packed {
                 case.call(&format!("this.{field_name} = reader.readPacked{method}();"));
@@ -182,6 +192,42 @@ fn deserialize_field(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
                 case.call(&format!("this.{field_name}.push(reader.read{method}());"));
             } else {
                 case.call(&format!("this.{field_name} = reader.read{method}();"));
+            }
+            case.end();
+        }
+    }
+}
+
+fn deserialize_int64(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
+    let mut case = switch.case(&field.number().to_string());
+
+    let field_name = field.json_name();
+    let repeated = field.label() == Label::LABEL_REPEATED;
+    let method = method_suffix(&field.type_());
+
+    if repeated {
+        let packed = field.options.packed.unwrap_or(true);
+        if packed {
+            case.call(&format!(
+                "this.{field_name} = reader.readPacked{method}String().map(BigInt);"
+            ));
+        } else {
+            case.call(&format!(
+                "this.{field_name}.push(BigInt(reader.read{method}String()));"
+            ));
+        }
+    } else {
+        match field.options.jstype() {
+            JSType::JS_NUMBER => {
+                case.call(&format!("this.{field_name} = reader.read{method}();"));
+            }
+            JSType::JS_STRING => {
+                case.call(&format!("this.{field_name} = reader.read{method}String();"));
+            }
+            JSType::JS_NORMAL => {
+                case.call(&format!(
+                    "this.{field_name} = BigInt(reader.read{method}String());"
+                ));
             }
         }
     }
@@ -236,7 +282,11 @@ fn type_to_ts(field: &FieldDescriptorProto) -> &str {
         | Type::TYPE_UINT64
         | Type::TYPE_FIXED64
         | Type::TYPE_SFIXED64
-        | Type::TYPE_SINT64 => "bigint",
+        | Type::TYPE_SINT64 => match field.options.jstype() {
+            JSType::JS_NUMBER => "number",
+            JSType::JS_STRING => "string",
+            JSType::JS_NORMAL => "bigint",
+        },
         Type::TYPE_MESSAGE | Type::TYPE_ENUM => get_message_name(field),
         _ => "any",
     }
@@ -246,8 +296,8 @@ fn get_message_name(field: &FieldDescriptorProto) -> &str {
     &field.type_name()[1..]
 }
 
-fn default_expr(field_type: &Type) -> &'static str {
-    match field_type {
+fn default_expr(field: &FieldDescriptorProto) -> &'static str {
+    match field.type_() {
         Type::TYPE_DOUBLE
         | Type::TYPE_FLOAT
         | Type::TYPE_INT32
@@ -263,7 +313,11 @@ fn default_expr(field_type: &Type) -> &'static str {
         | Type::TYPE_UINT64
         | Type::TYPE_FIXED64
         | Type::TYPE_SFIXED64
-        | Type::TYPE_SINT64 => "0n",
+        | Type::TYPE_SINT64 => match field.options.jstype() {
+            JSType::JS_NUMBER => "0",
+            JSType::JS_STRING => "\"0\"",
+            JSType::JS_NORMAL => "0n",
+        },
         _ => "undefined",
     }
 }
