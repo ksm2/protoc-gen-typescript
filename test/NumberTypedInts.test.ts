@@ -1,6 +1,6 @@
-import { BinaryReader, BinaryWriter } from 'google-protobuf';
 import { NumberTypedInts } from '../gen';
 import { decode, encode } from './protoc';
+import { deserialize, serialize } from './serde';
 
 describe('NumberTypedInts', () => {
   const MIN_INT64 = BigInt(Number.MIN_SAFE_INTEGER);
@@ -13,9 +13,7 @@ describe('NumberTypedInts', () => {
     ints.testFixed64 = Number(MAX_INT64);
     ints.testSint64 = Number(MIN_INT64);
 
-    const writer = new BinaryWriter();
-    ints.serialize(writer);
-    const binary = writer.getResultBuffer();
+    const binary = serialize(ints);
 
     const str = await decode('NumberTypedInts', binary);
     expect(str).toEqual({
@@ -34,9 +32,7 @@ describe('NumberTypedInts', () => {
       test_sint64: MIN_INT64,
     });
 
-    const reader = new BinaryReader(binary);
-    const ints = new NumberTypedInts();
-    ints.deserialize(reader);
+    const ints = deserialize(NumberTypedInts, binary);
 
     expect(ints.testInt64).toBe(Number(MAX_INT64));
     expect(ints.testUint64).toBe(Number(MAX_INT64));

@@ -1,6 +1,6 @@
-import { BinaryReader, BinaryWriter } from 'google-protobuf';
 import { Nested, RepeatedMessage, Status } from '../gen';
 import { decode, encode } from './protoc';
+import { deserialize, serialize } from './serde';
 
 describe('RepeatedMessage', () => {
   it('should serialize RepeatedMessage', async () => {
@@ -15,9 +15,7 @@ describe('RepeatedMessage', () => {
     nested.nestedStr = 'Hello World';
     foo.testNested.push(nested);
 
-    const writer = new BinaryWriter();
-    foo.serialize(writer);
-    const binary = writer.getResultBuffer();
+    const binary = serialize(foo);
 
     const str = await decode('RepeatedMessage', binary);
     expect(str).toEqual({
@@ -44,9 +42,7 @@ describe('RepeatedMessage', () => {
       },
     });
 
-    const reader = new BinaryReader(binary);
-    const foo = new RepeatedMessage();
-    foo.deserialize(reader);
+    const foo = deserialize(RepeatedMessage, binary);
 
     expect(foo.testString).toStrictEqual(['str1', 'str2']);
     expect(foo.testBool).toStrictEqual([false, true, false]);

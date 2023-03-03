@@ -1,6 +1,6 @@
-import { BinaryReader, BinaryWriter } from 'google-protobuf';
 import { StringTypedRepeatedInts } from '../gen';
 import { decode, encode } from './protoc';
+import { deserialize, serialize } from './serde';
 
 describe('StringTypedRepeatedInts', () => {
   const MIN_INT64 = -9223372036854775808n;
@@ -14,9 +14,7 @@ describe('StringTypedRepeatedInts', () => {
     ints.testFixed64 = [MAX_INT64.toString(10)];
     ints.testSint64 = [MIN_INT64.toString(10)];
 
-    const writer = new BinaryWriter();
-    ints.serialize(writer);
-    const binary = writer.getResultBuffer();
+    const binary = serialize(ints);
 
     const str = await decode('StringTypedRepeatedInts', binary);
     expect(str).toEqual({
@@ -35,9 +33,7 @@ describe('StringTypedRepeatedInts', () => {
       test_sint64: MIN_INT64,
     });
 
-    const reader = new BinaryReader(binary);
-    const ints = new StringTypedRepeatedInts();
-    ints.deserialize(reader);
+    const ints = deserialize(StringTypedRepeatedInts, binary);
 
     expect(ints.testInt64).toStrictEqual([MIN_INT64.toString(10), MAX_INT64.toString(10)]);
     expect(ints.testUint64).toStrictEqual([MAX_UINT64.toString(10), '0']);

@@ -1,6 +1,6 @@
-import { BinaryReader, BinaryWriter } from 'google-protobuf';
 import { Foo, Nested, Status } from '../gen';
 import { decode, encode } from './protoc';
+import { deserialize, serialize } from './serde';
 
 describe('Foo', () => {
   it('should serialize Foo', async () => {
@@ -11,9 +11,7 @@ describe('Foo', () => {
     foo.testNested = new Nested();
     foo.testNested.nestedStr = 'Hello World';
 
-    const writer = new BinaryWriter();
-    foo.serialize(writer);
-    const binary = writer.getResultBuffer();
+    const binary = serialize(foo);
 
     const str = await decode('Foo', binary);
     expect(str).toEqual({
@@ -36,9 +34,7 @@ describe('Foo', () => {
       },
     });
 
-    const reader = new BinaryReader(binary);
-    const foo = new Foo();
-    foo.deserialize(reader);
+    const foo = deserialize(Foo, binary);
 
     expect(foo.testString).toBe('Lorem ipsum dolor sit amet');
     expect(foo.testBool).toBe(true);
