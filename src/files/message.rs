@@ -55,7 +55,9 @@ pub fn message(message: &DescriptorProto) -> File {
     } else if message.name() == "Duration" && message.field.len() == 2 {
         duration_methods(&mut class);
     } else if message.name() == "BoolValue" && message.field.len() == 1 {
-        bool_value_methods(&mut class);
+        value_methods(&mut class, "BoolValue", "boolean");
+    } else if message.name() == "BytesValue" && message.field.len() == 1 {
+        value_methods(&mut class, "BytesValue", "Uint8Array");
     }
 
     let mut serialize = class.method("serialize", &[("writer", "BinaryWriter")], "void");
@@ -126,9 +128,9 @@ fn duration_methods(class: &mut Class) {
     class.blank();
 }
 
-fn bool_value_methods(class: &mut Class) {
-    let mut of = class.method("static of", &[("value", "boolean")], "BoolValue");
-    of.call("const v = new BoolValue();");
+fn value_methods(class: &mut Class, type_: &str, param: &str) {
+    let mut of = class.method("static of", &[("value", param)], type_);
+    of.call(&format!("const v = new {type_}();"));
     of.call("v.value = value;");
     of.call("return v;");
     of.end();
