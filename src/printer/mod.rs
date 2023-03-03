@@ -12,6 +12,7 @@ mod switch_block;
 mod while_block;
 
 pub use self::block::Block;
+pub use self::class::Class;
 pub use self::module::Module;
 pub use self::switch_block::SwitchBlock;
 

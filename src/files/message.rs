@@ -5,7 +5,7 @@ use protobuf::descriptor::field_options::JSType;
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto};
 use protobuf::plugin::code_generator_response::File;
 
-use crate::printer::{Block, Module, SwitchBlock};
+use crate::printer::{Block, Class, Module, SwitchBlock};
 
 pub fn message(message: &DescriptorProto) -> File {
     let name = message.name();
@@ -51,47 +51,11 @@ pub fn message(message: &DescriptorProto) -> File {
     class.blank();
 
     if message.name() == "Timestamp" && message.field.len() == 2 {
-        let mut from_date = class.method("static fromDate", &[("date", "Date")], "Timestamp");
-        from_date.call("const ts = new Timestamp();");
-        from_date.call("ts.seconds = BigInt(Math.floor(date.getTime() / 1000));");
-        from_date.call("ts.nanos = (date.getTime() % 1000) * 1_000_000;");
-        from_date.call("return ts;");
-        from_date.end();
-        class.blank();
-
-        let mut to_date = class.method("toDate", &[], "Date");
-        to_date.call("const ts = new Timestamp();");
-        to_date.call("const fromSeconds = Number(this.seconds * 1000n);");
-        to_date.call("const fromNanos = Math.floor(this.nanos / 1_000_000);");
-        to_date.call("return new Date(fromSeconds + fromNanos);");
-        to_date.end();
-        class.blank();
+        timestamp_methods(&mut class);
     } else if message.name() == "Duration" && message.field.len() == 2 {
-        let mut between = class.method(
-            "static between",
-            &[("date1", "Date"), ("date2", "Date")],
-            "Duration",
-        );
-        between.call("const millis = Math.abs(date1.getTime() - date2.getTime());");
-        between.call("return Duration.fromMillis(millis);");
-        between.end();
-        class.blank();
-
-        let mut from_millis =
-            class.method("static fromMillis", &[("millis", "number")], "Duration");
-        from_millis.call("const dur = new Duration();");
-        from_millis.call("dur.seconds = BigInt(Math.floor(millis / 1000));");
-        from_millis.call("dur.nanos = (millis % 1000) * 1_000_000;");
-        from_millis.call("return dur;");
-        from_millis.end();
-        class.blank();
-
-        let mut to_millis = class.method("toMillis", &[], "number");
-        to_millis.call("const fromSeconds = Number(this.seconds * 1000n);");
-        to_millis.call("const fromNanos = Math.floor(this.nanos / 1_000_000);");
-        to_millis.call("return fromSeconds + fromNanos;");
-        to_millis.end();
-        class.blank();
+        duration_methods(&mut class);
+    } else if message.name() == "BoolValue" && message.field.len() == 1 {
+        bool_value_methods(&mut class);
     }
 
     let mut serialize = class.method("serialize", &[("writer", "BinaryWriter")], "void");
@@ -115,6 +79,60 @@ pub fn message(message: &DescriptorProto) -> File {
     class.end();
 
     module.into()
+}
+
+fn timestamp_methods(class: &mut Class) {
+    let mut from_date = class.method("static fromDate", &[("date", "Date")], "Timestamp");
+    from_date.call("const ts = new Timestamp();");
+    from_date.call("ts.seconds = BigInt(Math.floor(date.getTime() / 1000));");
+    from_date.call("ts.nanos = (date.getTime() % 1000) * 1_000_000;");
+    from_date.call("return ts;");
+    from_date.end();
+    class.blank();
+
+    let mut to_date = class.method("toDate", &[], "Date");
+    to_date.call("const ts = new Timestamp();");
+    to_date.call("const fromSeconds = Number(this.seconds * 1000n);");
+    to_date.call("const fromNanos = Math.floor(this.nanos / 1_000_000);");
+    to_date.call("return new Date(fromSeconds + fromNanos);");
+    to_date.end();
+    class.blank();
+}
+
+fn duration_methods(class: &mut Class) {
+    let mut between = class.method(
+        "static between",
+        &[("date1", "Date"), ("date2", "Date")],
+        "Duration",
+    );
+    between.call("const millis = Math.abs(date1.getTime() - date2.getTime());");
+    between.call("return Duration.fromMillis(millis);");
+    between.end();
+    class.blank();
+
+    let mut from_millis = class.method("static fromMillis", &[("millis", "number")], "Duration");
+    from_millis.call("const dur = new Duration();");
+    from_millis.call("dur.seconds = BigInt(Math.floor(millis / 1000));");
+    from_millis.call("dur.nanos = (millis % 1000) * 1_000_000;");
+    from_millis.call("return dur;");
+    from_millis.end();
+    class.blank();
+
+    let mut to_millis = class.method("toMillis", &[], "number");
+    to_millis.call("const fromSeconds = Number(this.seconds * 1000n);");
+    to_millis.call("const fromNanos = Math.floor(this.nanos / 1_000_000);");
+    to_millis.call("return fromSeconds + fromNanos;");
+    to_millis.end();
+    class.blank();
+}
+
+fn bool_value_methods(class: &mut Class) {
+    let mut of = class.method("static of", &[("value", "boolean")], "BoolValue");
+    of.call("const v = new BoolValue();");
+    of.call("v.value = value;");
+    of.call("return v;");
+    of.end();
+    class.blank();
 }
 
 fn serialize_field(field: &FieldDescriptorProto, block: &mut impl Block) {
