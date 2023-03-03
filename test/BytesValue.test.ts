@@ -3,10 +3,6 @@ import { decode, encode } from './protoc';
 import { deserialize, serialize } from './serde';
 
 describe('BytesValue', () => {
-  beforeAll(() => {
-    jest.useFakeTimers();
-  });
-
   it('should serialize BytesValue', async () => {
     const bytes = BytesValue.of(new Uint8Array([0x41, 0x42, 0x43, 0x44]));
     const binary = serialize(bytes);

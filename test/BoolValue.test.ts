@@ -3,10 +3,6 @@ import { decode, encode } from './protoc';
 import { deserialize, serialize } from './serde';
 
 describe('BoolValue', () => {
-  beforeAll(() => {
-    jest.useFakeTimers();
-  });
-
   it('should serialize BoolValue', async () => {
     const bool = BoolValue.of(true);
     const binary = serialize(bool);

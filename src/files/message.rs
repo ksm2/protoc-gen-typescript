@@ -54,10 +54,17 @@ pub fn message(message: &DescriptorProto) -> File {
         timestamp_methods(&mut class);
     } else if message.name() == "Duration" && message.field.len() == 2 {
         duration_methods(&mut class);
-    } else if message.name() == "BoolValue" && message.field.len() == 1 {
-        value_methods(&mut class, "BoolValue", "boolean");
-    } else if message.name() == "BytesValue" && message.field.len() == 1 {
-        value_methods(&mut class, "BytesValue", "Uint8Array");
+    } else if message.field.len() == 1 {
+        match message.name() {
+            "BoolValue" => value_methods(&mut class, "BoolValue", "boolean"),
+            "BytesValue" => value_methods(&mut class, "BytesValue", "Uint8Array"),
+            "StringValue" => value_methods(&mut class, "StringValue", "string"),
+            "DoubleValue" | "FloatValue" | "Int32Value" | "UInt32Value" => {
+                value_methods(&mut class, message.name(), "number")
+            }
+            "Int64Value" | "UInt64Value" => value_methods(&mut class, message.name(), "bigint"),
+            _ => {}
+        }
     }
 
     let mut serialize = class.method("serialize", &[("writer", "BinaryWriter")], "void");
