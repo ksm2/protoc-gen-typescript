@@ -10,7 +10,7 @@ message Nested {
   string nested_str = 42;
 }
 
-message Foo {
+message Message {
   string test_string = 1;
   bytes test_bytes = 2;
   bool test_bool = 3;
