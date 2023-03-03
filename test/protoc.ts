@@ -14,10 +14,13 @@ export async function encode(typeName: string, obj: unknown): Promise<Buffer> {
 }
 
 function protoc(command: string, stdin: Uint8Array): Promise<Buffer> {
-  return exec(
-    `protoc ${command} -Iinclude include/test.proto include/duration.proto include/timestamp.proto`,
-    stdin
-  );
+  const protoFiles = [
+    'include/test.proto',
+    'include/duration.proto',
+    'include/timestamp.proto',
+    'include/wrappers.proto',
+  ];
+  return exec(`protoc ${command} -Iinclude ${protoFiles.join(' ')}`, stdin);
 }
 
 function exec(command: string, stdin: Uint8Array): Promise<Buffer> {

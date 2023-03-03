@@ -7,4 +7,5 @@ protoc \
   --typescript_out=gen \
   include/test.proto \
   include/duration.proto \
-  include/timestamp.proto
+  include/timestamp.proto \
+  include/wrappers.proto

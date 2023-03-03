@@ -8,4 +8,5 @@ protoc ^
   --typescript_out=gen ^
   include\test.proto ^
   include\duration.proto ^
+  include\wrappers.proto ^
   include\timestamp.proto
