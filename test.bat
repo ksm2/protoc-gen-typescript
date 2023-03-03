@@ -6,4 +6,5 @@ protoc ^
   --proto_path=include ^
   --plugin=protoc-gen-typescript=target\debug\protoc-gen-typescript.exe ^
   --typescript_out=gen ^
-  include\test.proto
+  include\test.proto ^
+  include\timestamp.proto

@@ -39,9 +39,7 @@ jobs:
       uses: arduino/setup-protoc@v1
 
     - name: Generate code
-      run: |
-        mkdir gen
-        protoc -Iinclude --typescript_out=gen include/test.proto
+      run: ./test.sh
 
     - name: Setup Node
       uses: actions/setup-node@v3

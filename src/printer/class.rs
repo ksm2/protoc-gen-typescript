@@ -24,7 +24,7 @@ impl<'a> Class<'a> {
         Property::new(self.module, name)
     }
 
-    pub fn method(&mut self, name: &str, params: &[(&str, &str); 1], return_type: &str) -> Method {
+    pub fn method(&mut self, name: &str, params: &[(&str, &str)], return_type: &str) -> Method {
         Method::new(self.module, name, params, return_type)
     }
 

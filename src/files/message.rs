@@ -1,9 +1,11 @@
-use crate::printer::{Block, Module, SwitchBlock};
+use std::collections::BTreeSet;
+
 use protobuf::descriptor::field_descriptor_proto::{Label, Type};
 use protobuf::descriptor::field_options::JSType;
 use protobuf::descriptor::{DescriptorProto, FieldDescriptorProto};
 use protobuf::plugin::code_generator_response::File;
-use std::collections::BTreeSet;
+
+use crate::printer::{Block, Module, SwitchBlock};
 
 pub fn message(message: &DescriptorProto) -> File {
     let name = message.name();
@@ -47,6 +49,24 @@ pub fn message(message: &DescriptorProto) -> File {
     }
 
     class.blank();
+
+    if message.name() == "Timestamp" && message.field.len() == 2 {
+        let mut from_date = class.method("static fromDate", &[("date", "Date")], "Timestamp");
+        from_date.call("const ts = new Timestamp();");
+        from_date.call("ts.seconds = BigInt(Math.floor(date.getTime() / 1000));");
+        from_date.call("ts.nanos = (date.getTime() % 1000) * 1_000_000;");
+        from_date.call("return ts;");
+        from_date.end();
+        class.blank();
+
+        let mut to_date = class.method("toDate", &[], "Date");
+        to_date.call("const ts = new Timestamp();");
+        to_date.call("const fromSeconds = Number(this.seconds * 1000n);");
+        to_date.call("const fromNanos = Math.floor(this.nanos / 1_000_000);");
+        to_date.call("return new Date(fromSeconds + fromNanos);");
+        to_date.end();
+        class.blank();
+    }
 
     let mut serialize = class.method("serialize", &[("writer", "BinaryWriter")], "void");
     for field in &message.field {
