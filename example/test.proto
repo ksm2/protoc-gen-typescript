@@ -42,6 +42,20 @@ message StringTypedInts {
   fixed64 test_fixed64 = 4 [jstype = JS_STRING];
 }
 
+message NumberTypedRepeatedInts {
+  repeated int64 test_int64 = 1 [jstype = JS_NUMBER];
+  repeated uint64 test_uint64 = 2 [jstype = JS_NUMBER, packed = false];
+  repeated sint64 test_sint64 = 3 [jstype = JS_NUMBER];
+  repeated fixed64 test_fixed64 = 4 [jstype = JS_NUMBER, packed = false];
+}
+
+message StringTypedRepeatedInts {
+  repeated int64 test_int64 = 1 [jstype = JS_STRING];
+  repeated uint64 test_uint64 = 2 [jstype = JS_STRING, packed = false];
+  repeated sint64 test_sint64 = 3 [jstype = JS_STRING];
+  repeated fixed64 test_fixed64 = 4 [jstype = JS_STRING, packed = false];
+}
+
 message RepeatedMessage {
  repeated string test_string = 1;
  repeated string test_unpacked_string = 1001 [packed = false];

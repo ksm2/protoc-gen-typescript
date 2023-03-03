@@ -129,27 +129,27 @@ fn serialize_int64(field: &FieldDescriptorProto, block: &mut impl Block) {
 
     let is_repeated = field.label() == Label::LABEL_REPEATED;
     if is_repeated {
-        block.call(&format!(
-            "writer.writeRepeated{method}String({number}, this.{field_name}.map((each) => each.toString(10)));"
-        ));
-    } else {
-        match js_type {
+        block.call(&match js_type {
             JSType::JS_NUMBER => {
-                block.call(&format!(
-                    "writer.write{method}({number}, this.{field_name});"
-                ));
+                format!("writer.writeRepeated{method}({number}, this.{field_name});")
             }
             JSType::JS_STRING => {
-                block.call(&format!(
-                    "writer.write{method}String({number}, this.{field_name});"
-                ));
+                format!("writer.writeRepeated{method}String({number}, this.{field_name});")
             }
             JSType::JS_NORMAL => {
-                block.call(&format!(
-                    "writer.write{method}String({number}, this.{field_name}.toString(10));"
-                ));
+                format!("writer.writeRepeated{method}String({number}, this.{field_name}.map((each) => each.toString(10)));")
             }
-        }
+        });
+    } else {
+        block.call(&match js_type {
+            JSType::JS_NUMBER => format!("writer.write{method}({number}, this.{field_name});"),
+            JSType::JS_STRING => {
+                format!("writer.write{method}String({number}, this.{field_name});")
+            }
+            JSType::JS_NORMAL => {
+                format!("writer.write{method}String({number}, this.{field_name}.toString(10));")
+            }
+        });
     }
 }
 
@@ -208,28 +208,42 @@ fn deserialize_int64(field: &FieldDescriptorProto, switch: &mut SwitchBlock) {
     if repeated {
         let packed = field.options.packed.unwrap_or(true);
         if packed {
-            case.call(&format!(
-                "this.{field_name} = reader.readPacked{method}String().map(BigInt);"
-            ));
+            case.call(&match field.options.jstype() {
+                JSType::JS_NUMBER => {
+                    format!("this.{field_name} = reader.readPacked{method}();")
+                }
+                JSType::JS_STRING => {
+                    format!("this.{field_name} = reader.readPacked{method}String();")
+                }
+                JSType::JS_NORMAL => {
+                    format!("this.{field_name} = reader.readPacked{method}String().map(BigInt);")
+                }
+            });
         } else {
-            case.call(&format!(
-                "this.{field_name}.push(BigInt(reader.read{method}String()));"
-            ));
+            case.call(&match field.options.jstype() {
+                JSType::JS_NUMBER => {
+                    format!("this.{field_name}.push(reader.read{method}());")
+                }
+                JSType::JS_STRING => {
+                    format!("this.{field_name}.push(reader.read{method}String());")
+                }
+                JSType::JS_NORMAL => {
+                    format!("this.{field_name}.push(BigInt(reader.read{method}String()));")
+                }
+            });
         }
     } else {
-        match field.options.jstype() {
+        case.call(&match field.options.jstype() {
             JSType::JS_NUMBER => {
-                case.call(&format!("this.{field_name} = reader.read{method}();"));
+                format!("this.{field_name} = reader.read{method}();")
             }
             JSType::JS_STRING => {
-                case.call(&format!("this.{field_name} = reader.read{method}String();"));
+                format!("this.{field_name} = reader.read{method}String();")
             }
             JSType::JS_NORMAL => {
-                case.call(&format!(
-                    "this.{field_name} = BigInt(reader.read{method}String());"
-                ));
+                format!("this.{field_name} = BigInt(reader.read{method}String());")
             }
-        }
+        });
     }
 
     case.end();

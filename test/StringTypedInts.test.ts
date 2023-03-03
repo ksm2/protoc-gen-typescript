@@ -1,5 +1,5 @@
 import { BinaryReader, BinaryWriter } from 'google-protobuf';
-import { StringTypedInts, Status } from '../gen';
+import { StringTypedInts } from '../gen';
 import { decode, encode } from './protoc';
 
 describe('StringTypedInts', () => {
