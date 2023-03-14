@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+service MyApi {
+  rpc UnaryRpc(UnaryRequest) returns (UnaryResponse);
+  rpc ServerStreamingRpc(ServerStreamingRequest) returns (stream ServerStreamingResponse);
+  rpc ClientStreamingRpc(stream ClientStreamingRequest) returns (ClientStreamingResponse);
+  rpc BidiStreamingRpc(stream BidiStreamingRequest) returns (stream BidiStreamingResponse);
+}
+
+message UnaryRequest {}
+message UnaryResponse {}
+message ServerStreamingRequest {}
+message ServerStreamingResponse {}
+message ClientStreamingRequest {}
+message ClientStreamingResponse {}
+message BidiStreamingRequest {}
+message BidiStreamingResponse {}

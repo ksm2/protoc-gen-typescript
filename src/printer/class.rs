@@ -1,3 +1,4 @@
+use super::Constructor;
 use super::Method;
 use super::Module;
 use super::Property;
@@ -22,6 +23,10 @@ impl<'a> Class<'a> {
 
     pub fn property(&mut self, name: &str) -> Property {
         Property::new(self.module, name)
+    }
+
+    pub fn constructor(&mut self, params: &[(&str, &str)]) -> Constructor {
+        Constructor::new(self.module, params)
     }
 
     pub fn method(&mut self, name: &str, params: &[(&str, &str)], return_type: &str) -> Method {

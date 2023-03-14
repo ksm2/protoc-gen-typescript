@@ -1,5 +1,5 @@
 use crate::files;
-use protobuf::descriptor::{DescriptorProto, EnumDescriptorProto};
+use protobuf::descriptor::{DescriptorProto, EnumDescriptorProto, ServiceDescriptorProto};
 use protobuf::plugin::{CodeGeneratorRequest, CodeGeneratorResponse};
 use protobuf::Message;
 use std::error::Error;
@@ -13,12 +13,18 @@ pub fn process<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> Result<(), 
 }
 
 fn process_request(request: CodeGeneratorRequest) -> CodeGeneratorResponse {
+    let services = extract_services(&request);
     let messages = extract_messages(&request);
     let enums = extract_enums(&request);
 
     let mut response = CodeGeneratorResponse::new();
-    response.file.push(files::index(&messages, &enums));
+    response
+        .file
+        .push(files::index(&services, &messages, &enums));
     response.file.push(files::types());
+    for service in services {
+        response.file.push(files::service(service));
+    }
     for message in messages {
         response.file.push(files::message(message));
     }
@@ -27,6 +33,14 @@ fn process_request(request: CodeGeneratorRequest) -> CodeGeneratorResponse {
     }
 
     response
+}
+
+fn extract_services(request: &CodeGeneratorRequest) -> Vec<&ServiceDescriptorProto> {
+    request
+        .proto_file
+        .iter()
+        .flat_map(|proto| proto.service.iter())
+        .collect()
 }
 
 fn extract_messages(request: &CodeGeneratorRequest) -> Vec<&DescriptorProto> {

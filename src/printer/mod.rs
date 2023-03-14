@@ -1,5 +1,6 @@
 mod block;
 mod class;
+mod constructor;
 mod enum_;
 mod enum_item;
 mod export;
@@ -16,6 +17,7 @@ pub use self::class::Class;
 pub use self::module::Module;
 pub use self::switch_block::SwitchBlock;
 
+use self::constructor::Constructor;
 use self::enum_item::EnumItem;
 use self::if_block::IfBlock;
 use self::method::Method;
