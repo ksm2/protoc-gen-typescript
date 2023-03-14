@@ -18,6 +18,7 @@ fn process_request(request: CodeGeneratorRequest) -> CodeGeneratorResponse {
 
     let mut response = CodeGeneratorResponse::new();
     response.file.push(files::index(&messages, &enums));
+    response.file.push(files::types());
     for message in messages {
         response.file.push(files::message(message));
     }

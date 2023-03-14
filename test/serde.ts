@@ -1,16 +1,5 @@
 import { BinaryReader, BinaryWriter } from 'google-protobuf';
-
-export interface Serializable {
-  serialize(writer: BinaryWriter): void;
-}
-
-export interface Deserializable {
-  deserialize(reader: BinaryReader): void;
-}
-
-export interface Class<T> {
-  new (): T;
-}
+import { Class, Deserializable, Serializable } from '../gen';
 
 export function serialize(ser: Serializable): Uint8Array {
   const writer = new BinaryWriter();

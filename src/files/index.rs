@@ -12,6 +12,15 @@ pub fn index(messages: &[&DescriptorProto], enums: &[&EnumDescriptorProto]) -> F
         .chain(enums.iter().map(|e| e.name()))
         .collect::<BTreeSet<_>>();
 
+    module
+        .export(&[
+            "type GrpcService",
+            "type Serializable",
+            "type Deserializable",
+            "type Class",
+        ])
+        .from("./types");
+
     for name in names {
         module.export(&[name]).from(&format!("./{name}"));
     }
