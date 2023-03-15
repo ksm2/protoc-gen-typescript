@@ -16,6 +16,7 @@ A code generator for TypeScript based on Protobuf definitions, written in Rust.
 - Generates well-formatted, easy to read and extendable TypeScript code
 - Generated code only depends on [`google-protobuf`](https://www.npmjs.com/package/google-protobuf)
 - Supports all field types
+- Generates service stubs
 - Generates enums
 - Allows using `String`, `Number` or `BigInt` for 64-bit integers
 - Enhanced integrations for `google.protobuf.Timestamp` and `google.protobuf.Duration` with JavaScript `Date`
