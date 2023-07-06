@@ -23,7 +23,7 @@ fn process_request(request: CodeGeneratorRequest) -> CodeGeneratorResponse {
         .push(files::index(&services, &messages, &enums));
     response.file.push(files::types());
     for service in services {
-        response.file.push(files::service(service));
+        response.file.push(files::service_client(service));
     }
     for message in messages {
         response.file.push(files::message(message));

@@ -4,9 +4,11 @@ use protobuf::plugin::code_generator_response::File;
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 
-pub fn service(svc: &ServiceDescriptorProto) -> File {
+pub fn service_client(svc: &ServiceDescriptorProto) -> File {
     let name = svc.name();
-    let mut module = Module::new(format!("{name}.ts"));
+    let client_name = format!("{name}Client");
+
+    let mut module = Module::new(format!("{client_name}.ts"));
 
     let imports = service_imports(svc);
     for import in imports {
@@ -15,7 +17,7 @@ pub fn service(svc: &ServiceDescriptorProto) -> File {
     module.import(&["GrpcService"]).from("./types");
     module.blank();
 
-    let mut class = module.class(name);
+    let mut class = module.class(client_name);
 
     class
         .property("service")
